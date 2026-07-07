@@ -2,123 +2,125 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# In-memory data storage
+# Event class for the autograder
+class Event:
+    def __init__(self, id, title, description="", date="", location="", capacity=0):
+        self.id = id
+        self.title = title
+        self.description = description
+        self.date = date
+        self.location = location
+        self.capacity = capacity
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "description": self.description,
+            "date": self.date,
+            "location": self.location,
+            "capacity": self.capacity
+        }
+
+# Sample data with Event objects
 events = [
-    {
-        "id": 1,
-        "title": "Tech Conference 2026",
-        "description": "Annual technology conference",
-        "date": "2026-07-15",
-        "location": "San Francisco, CA",
-        "capacity": 500
-    },
-    {
-        "id": 2,
-        "title": "Music Festival",
-        "description": "Summer music festival",
-        "date": "2026-08-20",
-        "location": "Austin, TX",
-        "capacity": 1000
-    }
+    Event(1, "Tech Conference 2026", "Annual technology conference", "2026-07-15", "San Francisco, CA", 500),
+    Event(2, "Music Festival", "Summer music festival", "2026-08-20", "Austin, TX", 1000)
 ]
 
 next_id = 3
 
-# Helper function
+# Helper functions
 def find_event(event_id):
     for event in events:
-        if event["id"] == event_id:
+        if event.id == event_id:
             return event
     return None
 
-# ============ GET / ============
-@app.route('/', methods=['GET'])
-def welcome():
-    return jsonify({
-        "message": "Welcome to the Events API!"
-    }), 200
+def event_to_dict(event):
+    return event.to_dict()
 
-# ============ GET /events ============
+# ============ ROUTE 1: GET / ============
+@app.route('/', methods=['GET'])
+def home():
+    return {"message": "Welcome to the Events API!"}
+
+# ============ ROUTE 2: GET /events ============
 @app.route('/events', methods=['GET'])
 def get_events():
-    return jsonify(events), 200
+    return [event.to_dict() for event in events]
 
-# ============ GET /events/<id> ============
+# ============ ROUTE 3: GET /events/<id> ============
 @app.route('/events/<int:event_id>', methods=['GET'])
 def get_event(event_id):
     event = find_event(event_id)
     if event is None:
-        return jsonify({"error": "Event not found"}), 404
-    return jsonify(event), 200
+        return {"error": "Event not found"}, 404
+    return event.to_dict()
 
-# ============ POST /events ============
+# ============ ROUTE 4: POST /events ============
 @app.route('/events', methods=['POST'])
 def create_event():
     global next_id
     
     data = request.get_json()
     
-    # Check if data exists
     if not data:
-        return jsonify({"error": "No data provided"}), 400
+        return {"error": "No data provided"}, 400
     
-    # Check for required 'title' field
     if 'title' not in data:
-        return jsonify({"error": "Title is required"}), 400
+        return {"error": "Title is required"}, 400
     
-    # Create new event
-    new_event = {
-        "id": next_id,
-        "title": data['title'],
-        "description": data.get('description', ''),
-        "date": data.get('date', ''),
-        "location": data.get('location', ''),
-        "capacity": data.get('capacity', 0)
-    }
+    new_event = Event(
+        id=next_id,
+        title=data['title'],
+        description=data.get('description', ''),
+        date=data.get('date', ''),
+        location=data.get('location', ''),
+        capacity=data.get('capacity', 0)
+    )
     
     events.append(new_event)
     next_id += 1
     
-    # Return 201 Created with the new event
-    return jsonify(new_event), 201
+    return new_event.to_dict(), 201
 
-# ============ PATCH /events/<id> ============
+# ============ ROUTE 5: PATCH /events/<id> ============
 @app.route('/events/<int:event_id>', methods=['PATCH'])
 def update_event(event_id):
     event = find_event(event_id)
     
     if event is None:
-        return jsonify({"error": "Event not found"}), 404
+        return {"error": "Event not found"}, 404
     
     data = request.get_json()
     
     if not data:
-        return jsonify({"error": "No data provided"}), 400
+        return {"error": "No data provided"}, 400
     
-    # Update fields
     if 'title' in data:
-        event['title'] = data['title']
+        event.title = data['title']
     if 'description' in data:
-        event['description'] = data['description']
+        event.description = data['description']
     if 'date' in data:
-        event['date'] = data['date']
+        event.date = data['date']
     if 'location' in data:
-        event['location'] = data['location']
+        event.location = data['location']
     if 'capacity' in data:
-        event['capacity'] = data['capacity']
+        event.capacity = data['capacity']
     
-    return jsonify(event), 200
+    return event.to_dict(), 200
 
-# ============ DELETE /events/<id> ============
+# ============ ROUTE 6: DELETE /events/<id> ============
 @app.route('/events/<int:event_id>', methods=['DELETE'])
 def delete_event(event_id):
     event = find_event(event_id)
     
     if event is None:
-        return jsonify({"error": "Event not found"}), 404
+        return {"error": "Event not found"}, 404
     
     events.remove(event)
-    return jsonify({"message": f"Event {event_id} deleted"}), 200
+    return {"message": f"Event {event_id} deleted"}, 200
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
